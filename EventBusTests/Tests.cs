@@ -33,10 +33,13 @@ namespace EventBusTests
         [Fact]
         public void Subscribe_WithValidHandler_ReturnsSubscriptionToken()
         {
+            // Arrange
             var handler = new Mock<Func<IEvent, Task>>();
 
+            // Act
             var token = _eventBus.Subscribe<TestEvent>(handler.Object);
 
+            // Assert
             Assert.NotNull(token);
             Assert.IsType<IDisposable>(token, exactMatch: false);
         }
@@ -44,18 +47,72 @@ namespace EventBusTests
         [Fact]
         public void Subscribe_WithNullHandler_ThrowsArgumentNullException()
         {
+            // Arrange
             Func<IEvent, Task>? handler = null;
 
+            // Act & Assert
             Assert.Throws<ArgumentNullException>(() => _eventBus.Subscribe<TestEvent>(handler));
         }
 
         [Fact]
         public async Task Subscribe_AfterDispose_ThrowsException()
         {
+            // Act
             await _eventBus.DisposeAsync();
 
+            // Assert
             Assert.Throws<ObjectDisposedException>(() =>
                 _eventBus.Subscribe<TestEvent>(async e => await Task.CompletedTask));
+        }
+    }
+
+    public class EventBusSubscribeOnceTests : IAsyncLifetime
+    {
+        private EventBus _eventBus;
+
+        public Task InitializeAsync()
+        {
+            _eventBus = new EventBus();
+            return Task.CompletedTask;
+        }
+
+        public async Task DisposeAsync()
+        {
+            await _eventBus.DisposeAsync();
+        }
+        
+        [Fact]
+        public void SubscribeOnce_WithValidHandler_ReturnsSubscriptionToken()
+        {
+            // Arrange
+            var handler = new Mock<Func<IEvent, Task>>();
+
+            // Act
+            var token = _eventBus.SubscribeOnce<TestEvent>(handler.Object);
+
+            // Assert
+            Assert.NotNull(token);
+            Assert.IsType<IDisposable>(token, exactMatch: false);
+        }
+
+        [Fact]
+        public void SubscribeOnce_WithNullHandler_ThrowsArgumentNullException()
+        {
+            // Arrange
+            Func<IEvent, Task>? handler = null;
+
+            // Act & Assert
+            Assert.Throws<ArgumentNullException>(() => _eventBus.SubscribeOnce<TestEvent>(handler));
+        }
+
+        [Fact]
+        public async Task SubscribeOnce_AfterDispose_ThrowsException()
+        {
+            // Act
+            await _eventBus.DisposeAsync();
+
+            // Assert
+            Assert.Throws<ObjectDisposedException>(() => _eventBus.SubscribeOnce<TestEvent>(async e => await Task.CompletedTask));
         }
     }
     
@@ -77,6 +134,7 @@ namespace EventBusTests
         [Fact]
         public async Task Unsubscribe_RemovesHandler()
         {
+            // Arrange
             var callCount = 0;
             var testEvent = new TestEvent { Data = "Test" };
             Func<IEvent, Task> handler = async e =>
@@ -84,14 +142,19 @@ namespace EventBusTests
                 Interlocked.Increment(ref callCount);
                 await Task.CompletedTask;
             };
+            
             _eventBus.Subscribe<TestEvent>(handler);
+            
+            // Act
+            await _eventBus.PublishAsync(testEvent);
+            await Task.Delay(50);
+            
+            var result = _eventBus.Unsubscribe<TestEvent>(handler);
             
             await _eventBus.PublishAsync(testEvent);
             await Task.Delay(50);
-            var result = _eventBus.Unsubscribe<TestEvent>(handler);
-            await _eventBus.PublishAsync(testEvent);
-            await Task.Delay(50);
 
+            // Assert
             Assert.True(result);
             Assert.Equal(1, callCount);
         }
@@ -135,6 +198,29 @@ namespace EventBusTests
 
             Assert.False(result);
         }
+        
+        [Fact]
+        public async Task SubscribeOnce_ManualDispose_NoCalls()
+        {
+            // Arrange
+            var eventBus = new EventBus();
+            var callsCount = 0;
+        
+            // Act
+            var token = eventBus.SubscribeOnce<TestEvent>(async e =>
+            {
+                Interlocked.Increment(ref callsCount);
+                await Task.CompletedTask;
+            });
+        
+            token.Dispose();
+        
+            await eventBus.PublishAsync(new TestEvent());
+            await Task.Delay(100);
+        
+            // Assert
+            Assert.Equal(0, callsCount);
+        }
     }
 
     public class EventBusPublishTests : IAsyncLifetime
@@ -155,6 +241,7 @@ namespace EventBusTests
         [Fact]
         public async Task PublishAsync_WithSubscribedHandler_CallsHandler()
         {
+            // Arrange
             var wasCalled = false;
             var testEvent = new TestEvent { Data = "Test" };
             Func<IEvent, Task> handler = async e =>
@@ -162,55 +249,68 @@ namespace EventBusTests
                 wasCalled = true;
                 await Task.CompletedTask;
             };
+            
             _eventBus.Subscribe<TestEvent>(handler);
             
+            // Act
             await _eventBus.PublishAsync(testEvent);
             await Task.Delay(100);
 
+            // Assert
             Assert.True(wasCalled);
         }
 
         [Fact]
         public async Task PublishAsync_WithMultipleHandlers_CallsAllHandlers()
         {
+            // Arrange
             var callCount = 0;
             var testEvent = new TestEvent { Data = "Test" };
+            
             _eventBus.Subscribe<TestEvent>(async e =>
             {
                 Interlocked.Increment(ref callCount);
                 await Task.CompletedTask;
             });
+            
             _eventBus.Subscribe<TestEvent>(async e =>
             {
                 Interlocked.Increment(ref callCount);
                 await Task.CompletedTask;
             });
 
+            // Act
             await _eventBus.PublishAsync(testEvent);
             await Task.Delay(100);
 
+            // Assert
             Assert.Equal(2, callCount);
         }
 
         [Fact]
         public async Task PublishAsync_WithSpecificEventType_OnlyCallsMatchingHandlers()
         {
+            // Arrange
             var testEventCallCount = 0;
             var anotherEventCallCount = 0;
+            
             _eventBus.Subscribe<TestEvent>(async e =>
             {
                 Interlocked.Increment(ref testEventCallCount);
                 await Task.CompletedTask;
             });
+            
             _eventBus.Subscribe<AnotherTestEvent>(async e =>
             {
                 Interlocked.Increment(ref anotherEventCallCount);
                 await Task.CompletedTask;
             });
 
+            // Act
             await _eventBus.PublishAsync(new TestEvent { Data = "Test" });
             await Task.Delay(100);
 
+            // Assert
             Assert.Equal(1, testEventCallCount);
             Assert.Equal(0, anotherEventCallCount);
         }
@@ -218,6 +318,7 @@ namespace EventBusTests
         [Fact]
         public async Task PublishAsync_WithMultipleEvents_ProcessesInOrder()
         {
+            // Arrange
             var events = new ConcurrentQueue<string>();
             var testEvent1 = new TestEvent { Data = "Event1" };
             var testEvent2 = new TestEvent { Data = "Event2" };
@@ -230,11 +331,13 @@ namespace EventBusTests
                 await Task.Delay(10);
             });
 
+            // Act
             await _eventBus.PublishAsync(testEvent1);
             await _eventBus.PublishAsync(testEvent2);
             await _eventBus.PublishAsync(testEvent3);
             await Task.Delay(150);
 
+            // Assert
             Assert.Equal(3, events.Count);
             
             Assert.True(events.TryDequeue(out var data1));
@@ -250,6 +353,7 @@ namespace EventBusTests
         [Fact]
         public async Task PublishAsync_WithThrowingHandler_DoesNotBreakEventBus()
         {
+            // Arrange
             var callCount = 0;
             var testEvent = new TestEvent { Data = "Test" };
 
@@ -265,22 +369,49 @@ namespace EventBusTests
                 await Task.CompletedTask;
             });
 
+            // Act
             await _eventBus.PublishAsync(testEvent);
             await Task.Delay(100);
             await _eventBus.PublishAsync(testEvent);
             await Task.Delay(100);
 
+            // Assert
             Assert.Equal(4, callCount);
         }
         
         [Fact]
         public async Task PublishAsync_AfterDispose_ThrowsException()
         {
+            // Act & Arrange
             await _eventBus.DisposeAsync();
             var testEvent = new TestEvent { Data = "Test" };
 
+            // Act & Assert
             await Assert.ThrowsAsync<ObjectDisposedException>(() =>
                 _eventBus.PublishAsync(testEvent).AsTask());
+        }
+        
+        [Fact]
+        public async Task PublishAsync_SubscribeOnceHandler_CallsOneTime()
+        {
+            // Arrange
+            var callsCount = 0;
+            var testEvent = new TestEvent { Data = "Test" };
+            Func<IEvent, Task> handler = async e =>
+            {
+                Interlocked.Increment(ref callsCount);
+                await Task.CompletedTask;
+            };
+            
+            _eventBus.SubscribeOnce<TestEvent>(handler);
+            
+            // Act
+            await _eventBus.PublishAsync(testEvent);
+            await _eventBus.PublishAsync(testEvent);
+            await Task.Delay(100);
+            
+            // Assert
+            Assert.Equal(1, callsCount);
         }
     }
 
@@ -302,12 +433,14 @@ namespace EventBusTests
         [Fact]
         public void Clear_RemovesAllHandlersForEventType()
         {
+            // Arrange
             var callCount = 0;
             Func<IEvent, Task> handler = async e =>
             {
                 Interlocked.Increment(ref callCount);
                 await Task.CompletedTask;
             };
+            
             _eventBus.Subscribe<TestEvent>(handler);
             _eventBus.Subscribe<TestEvent>(async e =>
             {
@@ -315,22 +448,27 @@ namespace EventBusTests
                 await Task.CompletedTask;
             });
 
+            // Act
             _eventBus.Clear<TestEvent>();
 
+            // Assert
             Assert.False(_eventBus.Unsubscribe<TestEvent>(handler));
         }
 
         [Fact]
         public void ClearAll_RemovesAllHandlers()
         {
+            // Arrange
             Func<IEvent, Task> handler1 = async e => await Task.CompletedTask;
             Func<IEvent, Task> handler2 = async e => await Task.CompletedTask;
-
+            
             _eventBus.Subscribe<TestEvent>(handler1);
             _eventBus.Subscribe<AnotherTestEvent>(handler2);
 
+            // Act
             _eventBus.ClearAll();
 
+            // Assert
             Assert.False(_eventBus.Unsubscribe<TestEvent>(handler1));
             Assert.False(_eventBus.Unsubscribe<AnotherTestEvent>(handler2));
         }
@@ -354,6 +492,7 @@ namespace EventBusTests
         [Fact]
         public async Task DisposeAsync_StopsProcessing()
         {
+            // Arrange
             var callCount = 0;
             var testEvent = new TestEvent { Data = "Test" };
             var handlerStarted = new TaskCompletionSource<bool>();
@@ -369,6 +508,7 @@ namespace EventBusTests
                 await Task.Delay(100);
             });
 
+            // Act
             await _eventBus.PublishAsync(testEvent);
             await handlerStarted.Task.WaitAsync(TimeSpan.FromSeconds(1));
             
@@ -378,6 +518,7 @@ namespace EventBusTests
             
             await Task.Delay(200);
 
+            //Assert
             Assert.Equal(1, callCount);
     
             await Assert.ThrowsAsync<ObjectDisposedException>(() =>
@@ -387,6 +528,7 @@ namespace EventBusTests
         [Fact]
         public async Task DisposeAsync_CanBeCalledMultipleTimes()
         {
+            // Act
             await _eventBus.DisposeAsync();
             await _eventBus.DisposeAsync();
         }
@@ -394,6 +536,7 @@ namespace EventBusTests
         [Fact]
         public async Task DisposeAsync_WaitsForCurrentHandlers_ThenCancels()
         {
+            // Arrange
             var handlerStarted = new ManualResetEventSlim(false);
             var handlerCanFinish = new ManualResetEventSlim(false);
             var handlerCompleted = false;
@@ -409,6 +552,7 @@ namespace EventBusTests
                 await Task.CompletedTask;
             });
 
+            // Act
             await _eventBus.PublishAsync(new TestEvent());
             handlerStarted.Wait(TimeSpan.FromSeconds(1));
 
@@ -419,13 +563,14 @@ namespace EventBusTests
             });
             await Task.Delay(100);
     
-            Assert.False(disposeCompleted, "DisposeAsync не должен завершиться, пока обработчик выполняется");
+            // Assert
+            Assert.False(disposeCompleted, "DisposeAsync should not complete while the handler is running.");
             handlerCanFinish.Set();
     
             await disposeTask.WaitAsync(TimeSpan.FromSeconds(6));
 
-            Assert.True(handlerCompleted, "Обработчик должен был завершиться");
-            Assert.True(disposeCompleted, "DisposeAsync должен был завершиться");
+            Assert.True(handlerCompleted, "The handler should have ended");
+            Assert.True(disposeCompleted, "DisposeAsync should have ended");
     
             await Assert.ThrowsAsync<ObjectDisposedException>(() =>
                 _eventBus.PublishAsync(new TestEvent()).AsTask());
@@ -450,6 +595,7 @@ namespace EventBusTests
         [Fact]
         public async Task MultipleEvents_InParallel_AreProcessed()
         {
+            // Arrange
             var processedEvents = new ConcurrentBag<string>();
             var tasks = new List<Task>();
             var testEvent = new TestEvent();
@@ -469,6 +615,7 @@ namespace EventBusTests
                 await Task.Delay(20);
             });
 
+            // Act
             for (var i = 0; i < expectedCount; i++)
             {
                 tasks.Add(_eventBus.PublishAsync(testEvent).AsTask());
@@ -477,12 +624,14 @@ namespace EventBusTests
             await Task.WhenAll(tasks);
             await allProcessed.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
+            // Assert
             Assert.Equal(expectedCount, processedEvents.Count);
         }
 
         [Fact]
         public async Task EventData_IsPassedCorrectly()
         {
+            // Arrange
             TestEvent? receivedEvent = null;
             var originalEvent = new TestEvent { Data = "Important Data" };
 
@@ -492,9 +641,11 @@ namespace EventBusTests
                 await Task.CompletedTask;
             });
 
+            // Act
             await _eventBus.PublishAsync(originalEvent);
             await Task.Delay(100);
 
+            // Assert
             Assert.NotNull(receivedEvent);
             Assert.Equal("Important Data", receivedEvent.Data);
             Assert.Same(originalEvent, receivedEvent);
@@ -503,6 +654,7 @@ namespace EventBusTests
         [Fact]
         public async Task Handler_WithAsyncOperation_Completes()
         {
+            // Arrange
             var completionSource = new TaskCompletionSource<bool>();
             var testEvent = new TestEvent { Data = "Test" };
 
@@ -512,18 +664,22 @@ namespace EventBusTests
                 completionSource.SetResult(true);
             });
 
+            // Act
             await _eventBus.PublishAsync(testEvent);
-            
             var result = await completionSource.Task.WaitAsync(TimeSpan.FromSeconds(1));
+            
+            // Assert
             Assert.True(result);
         }
         
         [Fact]
         public async Task MultipleSubscribeUnsubscribe_ThreadSafety()
         {
+            // Arrange
             var exceptions = new ConcurrentBag<Exception>();
             var tasks = new List<Task>();
 
+            // Act
             for (var i = 0; i < 10; i++)
             {
                 tasks.Add(Task.Run(() =>
@@ -545,9 +701,9 @@ namespace EventBusTests
                             }
                         }
                     }
-                    catch (Exception ex)
+                    catch (Exception exception)
                     {
-                        exceptions.Add(ex);
+                        exceptions.Add(exception);
                     }
                 }));
             }
@@ -555,6 +711,7 @@ namespace EventBusTests
             await Task.WhenAll(tasks);
             await _eventBus.DisposeAsync();
 
+            // Assert
             Assert.Empty(exceptions);
         }
     }

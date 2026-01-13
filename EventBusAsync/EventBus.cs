@@ -45,6 +45,22 @@ public class EventBus : IAsyncDisposable
         }
     }
 
+    public IDisposable SubscribeOnce<T>(Func<IEvent, Task> handler) where T : IEvent
+    {
+        ArgumentNullException.ThrowIfNull(handler);
+        
+        IDisposable? subscription = null;
+    
+        Task Wrapper(IEvent e)
+        {
+            subscription?.Dispose();
+            return handler.Invoke(e);
+        }
+        
+        subscription = Subscribe<T>(Wrapper);
+        return subscription;
+    }
+
     public bool Unsubscribe<T>(Func<IEvent, Task> handler) where T : IEvent
     {
         ThrowIfDisposed();
@@ -148,7 +164,7 @@ public class EventBus : IAsyncDisposable
             handlersCopy = [..handlers];
         }
         
-        var tasks = new List<Task>();
+        var tasks = new List<Task>(handlersCopy.Count);
         
         foreach (var handler in handlersCopy)
         {
@@ -159,7 +175,7 @@ public class EventBus : IAsyncDisposable
             }
             catch (Exception exception)
             {
-                Console.WriteLine($"Error in EventBus in PublishSingleAsync: {exception.Message}");
+                Console.WriteLine($"Error in handler: {exception.Message}");
             }
         }
         
@@ -171,7 +187,7 @@ public class EventBus : IAsyncDisposable
             }
             catch (Exception exception)
             {
-                Console.WriteLine($"Error in EventBus in PublishSingleAsync: {exception.Message}");
+                Console.WriteLine($"Error in handler: {exception.Message}");
             }
         }
     }
