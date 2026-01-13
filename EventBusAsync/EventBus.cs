@@ -13,7 +13,7 @@ public class EventBus : IAsyncDisposable
     }
     
     private readonly Dictionary<Type, List<Func<IEvent, Task>>> _handlers = new();
-    private readonly object _lock = new();
+    private readonly ReaderWriterLockSlim _cacheLock = new(LockRecursionPolicy.NoRecursion);
     private readonly Channel<IEvent> _eventChannel = Channel.CreateUnbounded<IEvent>(new UnboundedChannelOptions { SingleReader = true });
     private readonly CancellationTokenSource _cts = new();
     private readonly Task _processingTask;
@@ -31,17 +31,22 @@ public class EventBus : IAsyncDisposable
 
         var eventType = typeof(T);
 
-        lock (_lock)
+        _cacheLock.EnterWriteLock();
+        try
         {
             if (!_handlers.TryGetValue(eventType, out var handlers))
             {
                 handlers = [];
                 _handlers[eventType] = handlers;
             }
-            
+
             handlers.Add(handler);
-            
+
             return new SubscriptionToken(this, eventType, handler);
+        }
+        finally
+        {
+            _cacheLock.ExitWriteLock();
         }
     }
 
@@ -77,18 +82,30 @@ public class EventBus : IAsyncDisposable
     public void Clear<T>()
     {
         ThrowIfDisposed();
-        lock (_lock)
+        
+        _cacheLock.EnterWriteLock();
+        try
         {
             _handlers.Remove(typeof(T));
+        }
+        finally
+        {
+            _cacheLock.ExitWriteLock();
         }
     }
 
     public void ClearAll()
     {
         ThrowIfDisposed();
-        lock (_lock)
+        
+        _cacheLock.EnterWriteLock();
+        try
         {
             _handlers.Clear();
+        }
+        finally
+        {
+            _cacheLock.ExitWriteLock();
         }
     }
     
@@ -108,9 +125,14 @@ public class EventBus : IAsyncDisposable
         finally
         {
             _cts.Dispose();
-            lock (_lock)
+            _cacheLock.EnterWriteLock();
+            try
             {
                 _handlers.Clear();
+            }
+            finally
+            {
+                _cacheLock.ExitWriteLock();
             }
         }
     }
@@ -128,7 +150,8 @@ public class EventBus : IAsyncDisposable
     
     private bool Unsubscribe(Type eventType, Func<IEvent, Task> handler)
     {
-        lock (_lock)
+        _cacheLock.EnterWriteLock();
+        try
         {
             if (!_handlers.TryGetValue(eventType, out var handlers))
                 return false;
@@ -136,6 +159,10 @@ public class EventBus : IAsyncDisposable
             if (!handlers.Remove(handler) || handlers.Count != 0) return false;
             _handlers.Remove(eventType);
             return true;
+        }
+        finally
+        {
+            _cacheLock.ExitWriteLock();
         }
     }
     
@@ -156,12 +183,17 @@ public class EventBus : IAsyncDisposable
         List<Func<IEvent, Task>> handlersCopy;
         var eventType = eventData.GetType();
         
-        lock (_lock)
+        _cacheLock.EnterReadLock();
+        try
         {
             if (!_handlers.TryGetValue(eventType, out var handlers))
                 return;
-                
+
             handlersCopy = [..handlers];
+        }
+        finally
+        {
+            _cacheLock.ExitReadLock();
         }
         
         var tasks = new List<Task>(handlersCopy.Count);
