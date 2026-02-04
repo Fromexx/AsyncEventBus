@@ -5,12 +5,13 @@
         <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-        <RootNamespace>EventBusAsync</RootNamespace>
+        <RootNamespace>EventBus</RootNamespace>
+		<AssemblyName>EventBus</AssemblyName>
         <PackageId>AsyncEventBus</PackageId>
         <Title>AsyncEventBus</Title>
         <Authors>Fromexx</Authors>
         <Description>This library contains two EventBus implementations: AsyncEventBus, which is thread-safe and designed for asynchronous and multi-threaded operations; and SyncEventBus, which is thread-safe and synchronous.</Description>
-        <Version>1.0.0</Version>
+        <Version>1.0.5</Version>
         <Company />
         <Product>AsyncEventBus</Product>
         <PackageProjectUrl>https://github.com/Fromexx/AsyncEventBus</PackageProjectUrl>
