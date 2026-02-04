@@ -1,4 +1,4 @@
-﻿namespace EventBusAsync;
+﻿namespace EventBus;
 
 public struct EventPublishReport
 {

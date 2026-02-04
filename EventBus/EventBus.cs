@@ -1,6 +1,6 @@
 ﻿using System.Collections.Concurrent;
 
-namespace EventBusAsync;
+namespace EventBus;
 
 public abstract class EventBus
 {

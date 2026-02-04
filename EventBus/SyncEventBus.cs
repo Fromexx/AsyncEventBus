@@ -1,6 +1,6 @@
 ﻿using System.Collections.Concurrent;
 
-namespace EventBusAsync;
+namespace EventBus;
 
 public class SyncEventBus(SyncEventBusConfig config) : EventBus, IDisposable
 {
@@ -113,11 +113,5 @@ public class SyncEventBus(SyncEventBusConfig config) : EventBus, IDisposable
         {
             Reports.TryDequeue(out _);
         }
-    }
-    
-    private void ThrowIfDisposed()
-    {
-        if (Volatile.Read(ref CurrentDisposeState) != (int)DisposeState.Disposed) return;
-        throw new ObjectDisposedException(nameof(AsyncEventBus));
     }
 }

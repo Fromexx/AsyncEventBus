@@ -1,9 +1,8 @@
-﻿using System.Collections.Concurrent;
-using System.Threading.Channels;
+﻿using System.Threading.Channels;
 using Polly;
 using Polly.Retry;
 
-namespace EventBusAsync;
+namespace EventBus;
 
 public interface IEvent;
 

@@ -6,7 +6,36 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <RootNamespace>EventBusAsync</RootNamespace>
+        <PackageId>AsyncEventBus</PackageId>
+        <Title>AsyncEventBus</Title>
+        <Authors>Fromexx</Authors>
+        <Description>This library contains two EventBus implementations: AsyncEventBus, which is thread-safe and designed for asynchronous and multi-threaded operations; and SyncEventBus, which is thread-safe and synchronous.</Description>
+        <Version>1.0.0</Version>
+        <Company />
+        <Product>AsyncEventBus</Product>
+        <PackageProjectUrl>https://github.com/Fromexx/AsyncEventBus</PackageProjectUrl>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <RepositoryUrl>https://github.com/Fromexx/AsyncEventBus.git</RepositoryUrl>
+        <PackageTags>eventBus asyncEventBus events async thread-safe subscribe publish</PackageTags>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <Copyright>MIT License</Copyright>
+        <RepositoryType>git</RepositoryType>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <IncludeSymbols>True</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+        <PackageIcon>e3cb10df-89e6-487c-9cf9-ebb315ed958f_df5418d6-6cd1-430f-aabd-175d10fdeb90.png</PackageIcon>
     </PropertyGroup>
+
+    <ItemGroup>
+      <None Include="..\README.md">
+        <Pack>True</Pack>
+        <PackagePath>\</PackagePath>
+      </None>
+      <None Include="C:\Users\Froms\Downloads\e3cb10df-89e6-487c-9cf9-ebb315ed958f_df5418d6-6cd1-430f-aabd-175d10fdeb90.png">
+        <Pack>True</Pack>
+        <PackagePath>\</PackagePath>
+      </None>
+    </ItemGroup>
 
     <ItemGroup>
       <PackageReference Include="Polly" Version="8.6.5" />

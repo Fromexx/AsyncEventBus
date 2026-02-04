@@ -1,7 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using Moq;
 using Xunit;
-using EventBusAsync;
+using EventBus;
 
 namespace EventBusTests
 {

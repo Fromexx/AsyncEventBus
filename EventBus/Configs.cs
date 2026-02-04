@@ -1,4 +1,4 @@
-﻿namespace EventBusAsync;
+﻿namespace EventBus;
 
 public record struct AsyncEventBusConfig(TimeSpan ShutdownTimeout, int MaxRetryCount, bool EnableReporting, int MaxReportHistory)
 {
