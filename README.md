@@ -2,7 +2,7 @@
 This library contains two EventBus implementations: `AsyncEventBus`, which is thread-safe and designed for asynchronous and multi-threaded operations; and `SyncEventBus`, which is thread-safe and synchronous.
 The core concept is subscribing to any event represented by a class/struct with optional input parameters and a constructor to initialize them (recommended). When an event is published, its subscribed handlers receive an instance of the class (i.e., the event) with the necessary parameters.
 
-> [!TIP]
+> [!NOTE]
 > **Features**<br/>
 >✅ Asynchronous<br/>
 >✅ Multi-threading<br/>
