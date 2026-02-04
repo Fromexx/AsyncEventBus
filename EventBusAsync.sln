@@ -1,6 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EventBusAsync", "EventBusAsync\EventBusAsync.csproj", "{E880A2F1-CAA2-46CA-A0D3-E346E01D2258}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EventBus", "EventBus\EventBus.csproj", "{E880A2F1-CAA2-46CA-A0D3-E346E01D2258}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EventBusTests", "EventBusTests\EventBusTests.csproj", "{5139F7CD-7F76-427B-86D4-E6610F69AF18}"
 EndProject

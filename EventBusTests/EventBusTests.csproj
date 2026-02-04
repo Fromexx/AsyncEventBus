@@ -18,7 +18,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\EventBusAsync\EventBusAsync.csproj" />
+      <ProjectReference Include="..\EventBus\EventBus.csproj" />
     </ItemGroup>
 
 </Project>

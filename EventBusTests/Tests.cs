@@ -23,7 +23,7 @@ namespace EventBusTests
 
             public Task InitializeAsync()
             {
-                _asyncEventBus = new AsyncEventBus();
+                _asyncEventBus = EventBusFactory.CreateAsync();
                 return Task.CompletedTask;
             }
 
@@ -74,7 +74,7 @@ namespace EventBusTests
 
             public Task InitializeAsync()
             {
-                _asyncEventBus = new AsyncEventBus();
+                _asyncEventBus = EventBusFactory.CreateAsync();
                 return Task.CompletedTask;
             }
 
@@ -125,7 +125,7 @@ namespace EventBusTests
 
             public Task InitializeAsync()
             {
-                _asyncEventBus = new AsyncEventBus();
+                _asyncEventBus = EventBusFactory.CreateAsync();
                 return Task.CompletedTask;
             }
 
@@ -160,7 +160,7 @@ namespace EventBusTests
             public async Task SubscribeOnce_ManualDispose_NoCalls()
             {
                 // Arrange
-                var eventBus = new AsyncEventBus();
+                var eventBus = EventBusFactory.CreateAsync();
                 var callsCount = 0;
 
                 // Act
@@ -186,7 +186,7 @@ namespace EventBusTests
 
             public Task InitializeAsync()
             {
-                _asyncEventBus = new AsyncEventBus();
+                _asyncEventBus = EventBusFactory.CreateAsync();
                 return Task.CompletedTask;
             }
 
@@ -313,17 +313,17 @@ namespace EventBusTests
                 var callCount = 0;
                 var testEvent = new TestEvent { Data = "Test" };
 
-                _asyncEventBus.Subscribe(new Func<TestEvent, Task>(async e =>
+                _asyncEventBus.Subscribe<TestEvent>(async e =>
                 {
                     Interlocked.Increment(ref callCount);
                     throw new InvalidOperationException("Test exception");
-                }));
+                });
 
-                _asyncEventBus.Subscribe(new Func<TestEvent, Task>(async e =>
+                _asyncEventBus.Subscribe<TestEvent>(async e =>
                 {
                     Interlocked.Increment(ref callCount);
                     await Task.CompletedTask;
-                }));
+                });
 
                 // Act
                 await _asyncEventBus.PublishAsync(testEvent);
@@ -374,7 +374,7 @@ namespace EventBusTests
 
             public Task InitializeAsync()
             {
-                _asyncEventBus = new AsyncEventBus();
+                _asyncEventBus = EventBusFactory.CreateAsync();
                 return Task.CompletedTask;
             }
 
@@ -394,7 +394,7 @@ namespace EventBusTests
                     await Task.CompletedTask;
                 };
 
-                var token1 = _asyncEventBus.Subscribe(handler);
+                var token1 = _asyncEventBus.Subscribe<TestEvent>(handler);
                 var token2 = _asyncEventBus.Subscribe<TestEvent>(async e =>
                 {
                     Interlocked.Increment(ref callCount);
@@ -467,7 +467,7 @@ namespace EventBusTests
 
             public Task InitializeAsync()
             {
-                _asyncEventBus = new AsyncEventBus();
+                _asyncEventBus = EventBusFactory.CreateAsync();
                 return Task.CompletedTask;
             }
 
@@ -570,7 +570,7 @@ namespace EventBusTests
 
             public Task InitializeAsync()
             {
-                _asyncEventBus = new AsyncEventBus();
+                _asyncEventBus = EventBusFactory.CreateAsync();
                 return Task.CompletedTask;
             }
 
@@ -586,17 +586,17 @@ namespace EventBusTests
                 Func<TestEvent, Task> handler1 = e => Task.CompletedTask;
                 Func<TestEvent, Task> handler2 = e => Task.CompletedTask;
 
-                _asyncEventBus.Subscribe(handler1);
-                _asyncEventBus.Subscribe(handler2);
+                _asyncEventBus.Subscribe<TestEvent>(handler1);
+                _asyncEventBus.Subscribe<TestEvent>(handler2);
                 
                 // Act
                 await _asyncEventBus.PublishAsync(new TestEvent());
                 await Task.Delay(100);
 
                 // Assert
-                var report = _asyncEventBus.GetEventReport<TestEvent>();
+                var report = _asyncEventBus.GetEventReport<TestEvent>() ?? default;
                 
-                Assert.Equal(typeof(TestEvent), report!.EventType);
+                Assert.Equal(typeof(TestEvent), report.EventType);
                 Assert.Equal(2, report.HandlersCount);
                 Assert.Equal(0, report.ErrorHandlers);
                 Assert.Empty(report.Exceptions);
@@ -609,26 +609,26 @@ namespace EventBusTests
                 var callCount = 0;
                 var testEvent = new TestEvent { Data = "Test" };
 
-                _asyncEventBus.Subscribe(new Func<TestEvent, Task>(async e =>
+                _asyncEventBus.Subscribe<TestEvent>(async e =>
                 {
                     Interlocked.Increment(ref callCount);
                     throw new InvalidOperationException("Test exception");
-                }));
+                });
 
-                _asyncEventBus.Subscribe(new Func<TestEvent, Task>(async e =>
+                _asyncEventBus.Subscribe<TestEvent>(async e =>
                 {
                     Interlocked.Increment(ref callCount);
                     throw new ArgumentException("Test exception");
-                }));
+                });
 
                 // Act
                 await _asyncEventBus.PublishAsync(testEvent);
                 await Task.Delay(7000);
 
                 // Assert
-                var report = _asyncEventBus.GetEventReport<TestEvent>();
+                var report = _asyncEventBus.GetEventReport<TestEvent>() ?? default;
                 
-                Assert.Equal(typeof(TestEvent), report!.EventType);
+                Assert.Equal(typeof(TestEvent), report.EventType);
                 Assert.Equal(2, report.HandlersCount);
                 Assert.Equal(2, report.ErrorHandlers);
                 Assert.Contains(report.Exceptions, ex => ex is InvalidOperationException);
@@ -642,12 +642,12 @@ namespace EventBusTests
 
             public Task InitializeAsync()
             {
-                var config = EventBusConfig.Default with
+                var config = AsyncEventBusConfig.Default with
                 {
                     MaxReportHistory = 1,
                 };
                 
-                _asyncEventBus = new AsyncEventBus(config);
+                _asyncEventBus = EventBusFactory.CreateAsync(config);
                 return Task.CompletedTask;
             }
 
@@ -791,6 +791,586 @@ namespace EventBusTests
                 // Assert
                 Assert.Null(_asyncEventBus.GetEventReport<TestEvent>());
                 Assert.NotNull(_asyncEventBus.GetEventReport<AnotherTestEvent>());
+            }
+        }
+    }
+    
+    public class EventBusSyncTest
+    {
+        public class EventBusSubscribeTests : IDisposable
+        {
+            private SyncEventBus _syncEventBus;
+
+            public EventBusSubscribeTests()
+            {
+                _syncEventBus = EventBusFactory.CreateSync();
+            }
+
+            public void Dispose()
+            {
+                _syncEventBus.Dispose();
+            }
+
+            [Fact]
+            public void Subscribe_WithValidHandler_ReturnsSubscriptionToken()
+            {
+                // Arrange
+                var handler = new Mock<Action<IEvent>>();
+
+                // Act
+                var token = _syncEventBus.Subscribe<TestEvent>(handler.Object);
+
+                // Assert
+                Assert.NotNull(token);
+                Assert.IsType<IDisposable>(token, exactMatch: false);
+            }
+
+            [Fact]
+            public void Subscribe_WithNullHandler_ThrowsArgumentNullException()
+            {
+                // Arrange
+                Action<IEvent>? handler = null;
+
+                // Act & Assert
+                Assert.Throws<ArgumentNullException>(() => _syncEventBus.Subscribe<TestEvent>(handler));
+            }
+
+            [Fact]
+            public void Subscribe_AfterDispose_ThrowsException()
+            {
+                // Act
+                _syncEventBus.Dispose();
+
+                // Assert
+                Assert.Throws<ObjectDisposedException>(() =>
+                    _syncEventBus.Subscribe<TestEvent>(e => {}));
+            }
+        }
+
+        public class EventBusSubscribeOnceTests : IDisposable
+        {
+            private SyncEventBus _syncEventBus;
+
+            public EventBusSubscribeOnceTests()
+            {
+                _syncEventBus = EventBusFactory.CreateSync();
+            }
+
+            public void Dispose()
+            {
+                _syncEventBus.Dispose();
+            }
+
+            [Fact]
+            public void SubscribeOnce_WithValidHandler_ReturnsSubscriptionToken()
+            {
+                // Arrange
+                var handler = new Mock<Action<IEvent>>();
+
+                // Act
+                var token = _syncEventBus.Subscribe<TestEvent>(handler.Object, true);
+
+                // Assert
+                Assert.NotNull(token);
+                Assert.IsType<IDisposable>(token, exactMatch: false);
+            }
+
+            [Fact]
+            public void SubscribeOnce_WithNullHandler_ThrowsArgumentNullException()
+            {
+                // Arrange
+                Action<IEvent>? handler = null;
+
+                // Act & Assert
+                Assert.Throws<ArgumentNullException>(() => _syncEventBus.Subscribe<TestEvent>(handler, true));
+            }
+
+            [Fact]
+            public void SubscribeOnce_AfterDispose_ThrowsException()
+            {
+                // Act
+                _syncEventBus.Dispose();
+
+                // Assert
+                Assert.Throws<ObjectDisposedException>(() =>
+                    _syncEventBus.Subscribe<TestEvent>(e => {}, true));
+            }
+        }
+
+        public class EventBusUnsubscribeTests : IDisposable
+        {
+            private SyncEventBus _syncEventBus;
+
+            public EventBusUnsubscribeTests()
+            {
+                _syncEventBus = EventBusFactory.CreateSync();
+            }
+
+            public void Dispose()
+            {
+                _syncEventBus.Dispose();
+            }
+
+            [Fact]
+            public void SubscriptionToken_Dispose_UnsubscribesHandler()
+            {
+                // Arrange
+                var callCount = 0;
+                var testEvent = new TestEvent { Data = "Test" };
+                Action<TestEvent> handler = e =>
+                {
+                    callCount++;
+                };
+    
+                // Act
+                using (_syncEventBus.Subscribe(handler))
+                {
+                    _syncEventBus.Publish(testEvent);
+                }
+
+                _syncEventBus.Publish(testEvent);
+
+                // Assert
+                Assert.Equal(1, callCount);
+            }
+
+            [Fact]
+            public void SubscribeOnce_ManualDispose_NoCalls()
+            {
+                // Arrange
+                var eventBus = EventBusFactory.CreateSync();
+                var callsCount = 0;
+
+                // Act
+                var token = eventBus.Subscribe<TestEvent>(e =>
+                {
+                    callsCount++;
+                }, true);
+
+                token.Dispose();
+
+                eventBus.Publish(new TestEvent());
+
+                // Assert
+                Assert.Equal(0, callsCount);
+            }
+        }
+
+        public class EventBusPublishTests : IDisposable
+        {
+            private SyncEventBus _syncEventBus;
+
+            public EventBusPublishTests()
+            {
+                _syncEventBus = EventBusFactory.CreateSync();
+            }
+
+            public void Dispose()
+            {
+                _syncEventBus.Dispose();
+            }
+
+            [Fact]
+            public void PublishAsync_WithSubscribedHandler_CallsHandler()
+            {
+                // Arrange
+                var wasCalled = false;
+                var testEvent = new TestEvent { Data = "Test" };
+                Action<IEvent> handler = e =>
+                {
+                    wasCalled = true;
+                };
+
+                _syncEventBus.Subscribe<TestEvent>(handler);
+
+                // Act
+                _syncEventBus.Publish(testEvent);
+
+                // Assert
+                Assert.True(wasCalled);
+            }
+
+            [Fact]
+            public void PublishAsync_WithMultipleHandlers_CallsAllHandlers()
+            {
+                // Arrange
+                var callCount = 0;
+                var testEvent = new TestEvent { Data = "Test" };
+
+                _syncEventBus.Subscribe<TestEvent>(e =>
+                {
+                    callCount++;
+                });
+
+                _syncEventBus.Subscribe<TestEvent>(e =>
+                {
+                    callCount++;
+                });
+
+                // Act
+                _syncEventBus.Publish(testEvent);
+
+                // Assert
+                Assert.Equal(2, callCount);
+            }
+
+            [Fact]
+            public void PublishAsync_WithSpecificEventType_OnlyCallsMatchingHandlers()
+            {
+                // Arrange
+                var testEventCallCount = 0;
+                var anotherEventCallCount = 0;
+
+                _syncEventBus.Subscribe<TestEvent>(e =>
+                {
+                    testEventCallCount++;
+                });
+
+                _syncEventBus.Subscribe<AnotherTestEvent>(e =>
+                {
+                    anotherEventCallCount++;
+                });
+
+                // Act
+                _syncEventBus.Publish(new TestEvent { Data = "Test" });
+
+                // Assert
+                Assert.Equal(1, testEventCallCount);
+                Assert.Equal(0, anotherEventCallCount);
+            }
+
+            [Fact]
+            public void PublishAsync_WithThrowingHandler_DoesNotBreakEventBus()
+            {
+                // Arrange
+                var callCount = 0;
+                var testEvent = new TestEvent { Data = "Test" };
+
+                _syncEventBus.Subscribe<TestEvent>(e =>
+                {
+                    callCount++;
+                    throw new InvalidOperationException("Test exception");
+                });
+
+                _syncEventBus.Subscribe<TestEvent>(e =>
+                {
+                    callCount++;
+                });
+
+                // Act
+                _syncEventBus.Publish(testEvent);
+
+                // Assert
+                Assert.Equal(2, callCount);
+            }
+
+            [Fact]
+            public void PublishAsync_AfterDispose_ThrowsException()
+            {
+                // Act & Arrange
+                _syncEventBus.Dispose();
+                var testEvent = new TestEvent { Data = "Test" };
+
+                // Act & Assert
+                Assert.Throws<ObjectDisposedException>(() => _syncEventBus.Publish(testEvent));
+            }
+
+            [Fact]
+            public void PublishAsync_SubscribeOnceHandler_CallsOneTime()
+            {
+                // Arrange
+                var callsCount = 0;
+                var testEvent = new TestEvent { Data = "Test" };
+                Action<TestEvent> handler = e =>
+                {
+                    callsCount++;
+                };
+
+                _syncEventBus.Subscribe(handler, true);
+
+                // Act
+                _syncEventBus.Publish(testEvent);
+                _syncEventBus.Publish(testEvent);
+
+                // Assert
+                Assert.Equal(1, callsCount);
+            }
+        }
+
+        public class EventBusClearTests : IDisposable
+        {
+            private SyncEventBus _syncEventBus;
+
+            public EventBusClearTests()
+            {
+                _syncEventBus = EventBusFactory.CreateSync();
+            }
+
+            public void Dispose()
+            {
+                _syncEventBus.Dispose();
+            }
+
+            [Fact]
+            public void Clear_RemovesAllHandlersForEventType()
+            {
+                // Arrange
+                var callCount = 0;
+                Action<TestEvent> handler = e =>
+                {
+                    callCount++;
+                };
+
+                var token1 = _syncEventBus.Subscribe(handler);
+                var token2 = _syncEventBus.Subscribe<TestEvent>(e =>
+                {
+                    callCount++;
+                });
+
+                // Act
+                _syncEventBus.Clear<TestEvent>();
+
+                _syncEventBus.Publish(new TestEvent());
+
+                token1.Dispose();
+                token2.Dispose();
+
+                // Assert
+                Assert.Equal(0, callCount);
+            }
+
+            [Fact]
+            public void ClearAll_RemovesAllHandlers()
+            {
+                // Arrange
+                var callCount = 0;
+                Action<TestEvent> handler = e =>
+                {
+                    callCount++;
+                };
+
+                var token1 = _syncEventBus.Subscribe(handler);
+                var token2 = _syncEventBus.Subscribe<AnotherTestEvent>(e =>
+                {
+                    callCount++;
+                });
+
+                // Act
+                _syncEventBus.ClearAll();
+
+                _syncEventBus.Publish(new TestEvent());
+                _syncEventBus.Publish(new AnotherTestEvent());
+
+                token1.Dispose();
+                token2.Dispose();
+
+                // Assert
+                Assert.Equal(0, callCount);
+            }
+
+            [Fact]
+            public void Clear_DisposeSubscriptionToken_NothingHappens()
+            {
+                // Arrange
+                Action<TestEvent> handler = e => {};
+
+                var token = _syncEventBus.Subscribe(handler);
+                
+                // Act
+                _syncEventBus.Clear<TestEvent>();
+                token.Dispose();
+            }
+        }
+
+        public class EventBusDisposeTests : IDisposable
+        {
+            private SyncEventBus _syncEventBus;
+
+            public EventBusDisposeTests()
+            {
+                _syncEventBus = EventBusFactory.CreateSync();
+            }
+
+            public void Dispose()
+            {
+                _syncEventBus.Dispose();
+            }
+
+            [Fact]
+            public void Dispose_CanBeCalledMultipleTimes()
+            {
+                // Act
+                _syncEventBus.Dispose();
+                _syncEventBus.Dispose();
+            }
+            
+            [Fact]
+            public void Dispose_ClearsAllHandlers()
+            {
+                // Arrange
+                _syncEventBus.Subscribe<TestEvent>(e => {});
+
+                // Act
+                _syncEventBus.Dispose();
+
+                // Assert
+                Assert.Throws<ObjectDisposedException>(() => 
+                    _syncEventBus.Publish(new TestEvent()));
+            }
+
+            [Fact]
+            public void Dispose_WithActiveHandlers_CompletesSynchronously()
+            {
+                // Arrange
+                var handlerCompleted = false;
+                var testEvent = new TestEvent { Data = "Test" };
+                
+                _syncEventBus.Subscribe<TestEvent>(e =>
+                {
+                    Thread.Sleep(50);
+                    handlerCompleted = true;
+                });
+
+                // Act
+                _syncEventBus.Publish(testEvent);
+                _syncEventBus.Dispose();
+
+                // Assert
+                Assert.True(handlerCompleted);
+            }
+
+            [Fact]
+            public void Dispose_AfterSubscribe_HandlerNotCalled()
+            {
+                // Arrange
+                _syncEventBus.Subscribe<TestEvent>(e => { });
+
+                // Act
+                _syncEventBus.Dispose();
+                
+
+                // Assert
+                Assert.Throws<ObjectDisposedException>(() => _syncEventBus.Publish(new TestEvent()));
+            }
+        }
+
+        public class EventBusReportTests : IDisposable
+        {
+            private SyncEventBus _syncEventBus;
+
+            public EventBusReportTests()
+            {
+                _syncEventBus = EventBusFactory.CreateSync();
+            }
+
+            public void Dispose()
+            {
+                _syncEventBus.Dispose();
+            }
+
+            [Fact]
+            public void CheckReport_WithValidHandlers()
+            {
+                // Arrange
+                Action<TestEvent> handler1 = e => {};
+                Action<TestEvent> handler2 = e => {};
+
+                _syncEventBus.Subscribe(handler1);
+                _syncEventBus.Subscribe(handler2);
+                
+                // Act
+                _syncEventBus.Publish(new TestEvent());
+
+                // Assert
+                var report = _syncEventBus.GetEventReport<TestEvent>() ?? default;
+                
+                Assert.Equal(typeof(TestEvent), report.EventType);
+                Assert.Equal(2, report.HandlersCount);
+                Assert.Equal(0, report.ErrorHandlers);
+                Assert.Empty(report.Exceptions);
+            }
+            
+            [Fact]
+            public void CheckReport_WithThrowingHandler()
+            {
+                // Arrange
+                var testEvent = new TestEvent { Data = "Test" };
+
+                _syncEventBus.Subscribe<TestEvent>(e => throw new InvalidOperationException("Test exception"));
+                _syncEventBus.Subscribe<TestEvent>(e => throw new ArgumentException("Test exception"));
+
+                // Act
+                _syncEventBus.Publish(testEvent);
+
+                // Assert
+                var report = _syncEventBus.GetEventReport<TestEvent>() ?? default;
+                
+                Assert.Equal(typeof(TestEvent), report.EventType);
+                Assert.Equal(2, report.HandlersCount);
+                Assert.Equal(2, report.ErrorHandlers);
+                Assert.Contains(report.Exceptions, ex => ex is InvalidOperationException);
+                Assert.Contains(report.Exceptions, ex => ex is ArgumentException);
+            }
+        }
+
+        public class EventBusOtherTests : IDisposable
+        {
+            private SyncEventBus _syncEventBus;
+
+            public EventBusOtherTests()
+            {
+                _syncEventBus = EventBusFactory.CreateSync();
+            }
+
+            public void Dispose()
+            {
+                _syncEventBus.Dispose();
+            }
+
+            [Fact]
+            public void EventData_IsPassedCorrectly()
+            {
+                // Arrange
+                TestEvent? receivedEvent = null;
+                var originalEvent = new TestEvent { Data = "Important Data" };
+
+                _syncEventBus.Subscribe<TestEvent>(e =>
+                {
+                    receivedEvent = e;
+                });
+
+                // Act
+                _syncEventBus.Publish(originalEvent);
+
+                // Assert
+                Assert.NotNull(receivedEvent);
+                Assert.Equal("Important Data", receivedEvent.Data);
+                Assert.Same(originalEvent, receivedEvent);
+            }
+
+            [Fact]
+            public void Publish_WithChangedConfig_OnlyOneReport()
+            {
+                // Arrange
+                var config = SyncEventBusConfig.Default with
+                {
+                    MaxReportHistory = 1,
+                };
+                SyncEventBus eventBus = new(config);
+                
+                Action<TestEvent> handler1 = e => {};
+                Action<AnotherTestEvent> handler2 = e => {};
+
+                eventBus.Subscribe(handler1);
+                eventBus.Subscribe(handler2);
+                
+                // Act
+                eventBus.Publish(new TestEvent());
+                eventBus.Publish(new AnotherTestEvent());
+                
+                // Assert
+                Assert.Null(eventBus.GetEventReport<TestEvent>());
+                Assert.NotNull(eventBus.GetEventReport<AnotherTestEvent>());
             }
         }
     }

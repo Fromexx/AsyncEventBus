@@ -1,6 +1,6 @@
 ﻿namespace EventBusAsync;
 
-public class EventPublishReport
+public struct EventPublishReport
 {
      public Type EventType { get; set; }
      public int HandlersCount { get; set; }
